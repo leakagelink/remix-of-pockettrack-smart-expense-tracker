@@ -6,9 +6,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { initializeAdMob } from "./components/AdMob";
+import { installGlobalCrashLogger } from "./lib/crashLogger";
 
-// Initialize AdMob when app starts
-initializeAdMob();
+// Install a global crash logger BEFORE anything else so we never miss a startup crash.
+installGlobalCrashLogger();
+
+// Initialize AdMob when app starts (deferred + isolated so a native crash cannot kill the app).
+if (typeof window !== "undefined") {
+  // Defer to next tick so React can mount even if AdMob throws synchronously.
+  setTimeout(() => {
+    initializeAdMob().catch((err) => {
+      // Already logged inside, but double-guard.
+      console.error("[AdMob] init outer catch:", err);
+    });
+  }, 0);
+}
 
 const queryClient = new QueryClient();
 

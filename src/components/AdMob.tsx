@@ -22,11 +22,20 @@ export async function initializeAdMob() {
     return;
   }
 
+  // Heavy try/catch so a native AdMob failure can NEVER take the whole app down.
   try {
-    const { AdMob } = await import('@capacitor-community/admob');
-    await AdMob.initialize({
-      initializeForTesting: false,
+    console.log('[AdMob] Native detected, importing plugin…');
+    const mod = await import('@capacitor-community/admob').catch((e) => {
+      console.error('[AdMob] dynamic import failed:', e);
+      throw e;
     });
+    const { AdMob } = mod;
+    if (!AdMob || typeof AdMob.initialize !== 'function') {
+      console.error('[AdMob] Plugin object missing initialize() — native plugin not registered.');
+      return;
+    }
+    console.log('[AdMob] Calling AdMob.initialize()…');
+    await AdMob.initialize({ initializeForTesting: false });
     console.log('[AdMob] Initialized successfully');
   } catch (error) {
     console.error('[AdMob] Initialization failed:', error);
